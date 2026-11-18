@@ -58,15 +58,15 @@ print_header "4. Potential SUID / world‑writable shell paths"
 echo
 print_item "Files owned by root with the set‑uid bit set:"
 find / -path /proc -prune -o \
-     -type f -perm -4000 -user root -exec ls -ld {} + 2>/dev/null | head -n 20
+     -type f -perm -4000 -user root -exec ls -ld {} + 2>/dev/null | head -n 20 || true
 
 print_item "Root‑owned, world‑writable files (SHELLS):"
 find / -path /proc -prune -o \
-     -type f -perm /022 -user root -exec ls -ld {} + 2>/dev/null | egrep -i '\.(sh|bash|bashrc|csh|zsh|fish|ksh)$' | head -n 20
+     -type f -perm /022 -user root -exec ls -ld {} + 2>/dev/null | egrep -i '\.(sh|bash|bashrc|csh|zsh|fish|ksh)$' | head -n 20 || true
 
 print_item "World‑writable directories that may allow compiles:"
 find / -path /proc -prune -o \
-     -type d -perm /022 -exec ls -ld {} + 2>/dev/null | head -n 20
+     -type d -perm /022 -exec ls -ld {} + 2>/dev/null | head -n 20 || true
 
 
 print_header "5. Known privilege‑escalation helper checks"
