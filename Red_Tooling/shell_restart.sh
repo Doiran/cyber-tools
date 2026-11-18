@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-interactive_shells=("bash" zsh" "fish")
+interactive_shells=("bash" "zsh" "fish")
 
 CURRENT_USER="$(whoami)"
 
@@ -30,4 +30,4 @@ for pid in "${pids[@]}"; do
 done
 
 echo
-wall -n "🍺ᗜˬᗜ Heres a drink for your hard work 🍺ᗜˬᗜ"
+echo -n "🍺ᗜˬᗜ Heres a drink for your hard work 🍺ᗜˬᗜ"
