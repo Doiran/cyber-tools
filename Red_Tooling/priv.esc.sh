@@ -5,9 +5,10 @@ set -euo pipefail
 
 print_header() {
     local title="$1"
+    local len=$(( ${#title} + 8 ))
     printf "\n%s\n%s\n\n" \
         "=== $title ===" \
-        "$(printf '=%.0s' $(seq 1 ${#title}+8))"
+        "$(printf '=%.0s' $(seq 1 "$len"))"
 }
 
 print_item() {
@@ -31,7 +32,9 @@ print_header "2. Sudo configuration"
 if command -v sudo >/dev/null 2>&1; then
     echo
     print_item "Listing allowed sudoers entries for $(whoami):"
-    sudo -l -U "$(whoami)" 2>/dev/null | grep -v 'visual' || print_item "    * No explicit sudo permissions."
+    # Dropped -U "$(whoami)" since querying other users typically requires
+    # elevated rights itself; plain "sudo -l" lists the current user's rules.
+    sudo -l 2>/dev/null | grep -v 'visual' || print_item "    * No explicit sudo permissions."
 else
     print_item "sudo command not found – skipping."
 fi
@@ -42,8 +45,9 @@ printf "  - User groups: %s\n" "$(id -Gn)"
 
 # Look for membership in high‑privilege groups (non‑standard names may vary)
 declare -a high_groups=("adm" "wheel" "sudo" "root" "systemd-journal" "docker")
+user_groups=" $(id -Gn) "
 for grp in "${high_groups[@]}"; do
-    if groups "$grp" 2>/dev/null | grep -q "$grp"; then
+    if [[ "$user_groups" == *" $grp "* ]]; then
         print_item "  * Member of privileged group: $grp"
     fi
 done
@@ -58,11 +62,11 @@ find / -path /proc -prune -o \
 
 print_item "Root‑owned, world‑writable files (SHELLS):"
 find / -path /proc -prune -o \
-     -type f -perm +022 -user root -exec ls -ld {} + 2>/dev/null | egrep -i '\.(sh|bash|bashrc|csh|zsh|fish|ksh)$' | head -n 20
+     -type f -perm /022 -user root -exec ls -ld {} + 2>/dev/null | egrep -i '\.(sh|bash|bashrc|csh|zsh|fish|ksh)$' | head -n 20
 
 print_item "World‑writable directories that may allow compiles:"
 find / -path /proc -prune -o \
-     -type d -perm +022 -exec ls -ld {} + 2>/dev/null | head -n 20
+     -type d -perm /022 -exec ls -ld {} + 2>/dev/null | head -n 20
 
 
 print_header "5. Known privilege‑escalation helper checks"
@@ -71,25 +75,10 @@ print_header "5. Known privilege‑escalation helper checks"
 declare -a risky_cmds=("vim" "emacs" "less" "top" "ps" "sh" "bash" "dash" "zsh")
 print_item "Checking for programs with known SUID fixes or CVE warnings:"
 for prog in "${risky_cmds[@]}"; do
-    if [ -x "$(command -v $prog 2>/dev/null)" ]; then
-        print_item "  * $prog found: $(command -v $prog)"
+    path="$(command -v "$prog" 2>/dev/null || true)"
+    if [ -n "$path" ] && [ -x "$path" ]; then
+        print_item "  * $prog found: $path"
     fi
 done
-
-
-echo
-print_item "Sudo dynamic plugins (SUDOERS.D):"
-ls -l /etc/sudoers.d/ 2>/dev/null || print_item "    * No sudoers.d directory."
-
-printf "\n   • If you see any of the above items listed in a "
-printf "warning area, consider:\n"
-printf "     - Removing SUID root binaries unless absolutely needed.\n"
-printf "     - Tightening world‑writable directories.\n"
-printf "     - Reviewing sudoers entries.\n"
-printf "     - Checking SELinux/AppArmor policies.\n\n"
-printf "   • For deeper analysis, run:\n"
-printf "     * auditd/OSSEC logs\n"
-printf "     * static analysis of kernel modules\n"
-printf "     * automated tools such as 'linPEAS'.\n"
 
 exit 0
